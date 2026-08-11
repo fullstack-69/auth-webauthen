@@ -1,0 +1,16 @@
+{
+  "extends": [
+    "@tsconfig/node-lts/tsconfig.json",
+    "@tsconfig/node-ts/tsconfig.json"
+  ],
+  "compilerOptions": {
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": "./dist",
+    "paths": {
+      "@src/*": ["./src/*"],
+      "@db/*": ["./db/*"]
+    }
+  },
+  "include": ["./*", "./src/**/*", "./db/**/*"]
+}
