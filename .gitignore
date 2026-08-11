@@ -28,8 +28,8 @@ pids
 *.env
 
 # Build outputs (Uncomment if using TypeScript or bundlers)
-# dist/
-# build/
+dist/
+build/
 
 # Optional npm cache or history
 .npm
