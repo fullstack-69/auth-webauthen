@@ -3,9 +3,10 @@ body(class="container")
     include ../components/nav.pug
     main
         h1 Home 
-            em (Credential/Session)
+            em (Web Authentication)
         if user
             include ../components/userCard.pug
+            include ../components/webAuthen.pug
         else
             article
                 h2 Welcome, Guest
