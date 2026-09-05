@@ -6,7 +6,14 @@
   "scripts": {
     "dev": "nodemon",
     "build": "tsc && tsc-alias",
-    "start": "node ./dist/src/index.js"
+    "start": "node ./dist/src/index.js",
+    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate",
+    "db:delete": "rimraf ./db/migration db.sqlite",
+    "db:sync": "drizzle-kit generate && drizzle-kit migrate",
+    "db:seed": "tsx ./db/seed.ts",
+    "db:prototype": "tsx ./db/prototype.ts",
+    "db:reset": "pnpm run db:delete && pnpm run db:sync && pnpm run db:seed"
   },
   "keywords": [],
   "author": "",
@@ -20,16 +27,23 @@
   },
   "type": "module",
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "@simplewebauthn/server": "^13.3.2",
+    "bcrypt": "^6.0.0",
+    "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
-    "install": "^0.13.0"
+    "install": "^0.13.0",
+    "nanoid": "^6.0.1"
   },
   "devDependencies": {
     "@tsconfig/node-lts": "^24.0.0",
     "@tsconfig/node-ts": "^23.6.4",
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.2.0",
+    "drizzle-kit": "^0.31.10",
     "nodemon": "^3.1.14",
+    "rimraf": "^6.1.3",
     "tsc-alias": "^1.9.1",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"

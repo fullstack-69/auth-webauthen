@@ -35,3 +35,6 @@ build/
 .npm
 .eslintcache
 .node_repl_history
+
+*.sqlite
+migration
