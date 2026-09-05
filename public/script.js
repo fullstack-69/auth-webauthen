@@ -5,9 +5,9 @@ let attResp;
 let verificationJSON;
 let optionsJSONAuth;
 
+// GET registration options from the endpoint generateRegistrationOptions()
 async function getRegisterOptions() {
   try {
-    // Fetch the registration options from the server
     const resp = await fetch("/api/register-options");
     optionsJSONReg = await resp.json();
     console.log({ optionsJSON: optionsJSONReg });
@@ -16,9 +16,9 @@ async function getRegisterOptions() {
   }
 }
 
-async function passOption() {
+// Pass registration options to the authenticator and wait for a response
+async function passRegOptionToAuthenticator() {
   try {
-    // Pass the options to the authenticator and get the attestation response
     attResp = await startRegistration({ optionsJSON: optionsJSONReg });
     console.log({ attResp });
   } catch (error) {
@@ -26,9 +26,9 @@ async function passOption() {
   }
 }
 
+// POST registration response to the endpoint that calls verifyRegistrationResponse()
 async function sendAttestationResponse() {
   try {
-    // POST the response to the endpoint that calls
     const verificationResp = await fetch("/api/register-verify", {
       method: "POST",
       headers: {
@@ -43,9 +43,9 @@ async function sendAttestationResponse() {
   }
 }
 
+// GET authentication options from the endpoint that calls
 async function getAuthOptions() {
   try {
-    // GET authentication options from the endpoint that calls
     const resp = await fetch("/generate-authentication-options");
     optionsJSONAuth = await resp.json();
     console.log({ optionsJSON: optionsJSONAuth });
@@ -54,14 +54,30 @@ async function getAuthOptions() {
   }
 }
 
-const btnRegGet = document.getElementById("reg-get");
-btnRegGet.addEventListener("click", getRegisterOptions);
+// Pass authentication options to the authenticator and wait for a response
+async function passAuthOptionToAuthenticator() {
+  try {
+    asseResp = await startAuthentication({ optionsJSON: optionsJSONAuth });
+  } catch (error) {
+    console.error(error);
+  }
+}
 
-const btnRegPass = document.getElementById("reg-pass");
-btnRegPass.addEventListener("click", passOption);
+// POST the response to the endpoint that calls
+async function sendAssertionResponse() {
+  try {
+    const verificationResp = await fetch("/verify-authentication", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(asseResp),
+    });
 
-const btnRegSend = document.getElementById("reg-send");
-btnRegSend.addEventListener("click", sendAttestationResponse);
-
-const btnAuthGet = document.getElementById("auth-get");
-btnAuthGet.addEventListener("click", getAuthOptions);
+    // Wait for the results of verification
+    const verificationJSON = await verificationResp.json();
+    console.log({ verificationJSON });
+  } catch (error) {
+    console.error(error);
+  }
+}

@@ -1,3 +1,8 @@
 article(style="width:100%")
-    button(type="button" class="btn btn-primary" hx-post="/webauthn/register" hx-target="#webauthn-register") Register
-    button(type="button" class="btn btn-primary" hx-post="/webauthn/authenticate" hx-target="#webauthn-authenticate") Authenticate
+    div
+        button(hx-on:click="getRegisterOptions()") Get Registration Options
+        button(hx-on:click="passRegOptionToAuthenticator()") Pass Registration Options to Authenticator
+        button(hx-on:click="sendAttestationResponse()") Send Attestation Response
+    div
+        button(hx-on:click="getAuthOptions()") Get Authentication Options
+        button(hx-on:click="passAuthOptionToAuthenticator()") Pass Authentication Options to Authenticator
