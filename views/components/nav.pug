@@ -1,0 +1,21 @@
+header
+    nav
+        ul
+            li
+                a(href="/" class="custom-icon")
+                    i(class="fa-solid fa-xl fa-home")
+        if !user
+            ul
+                li 
+                    a(href="/signup" class="custom-icon") 
+                        i(class="fa-solid fa-xl fa-user-plus")
+                li 
+                    a(href="/login" class="custom-icon") 
+                        i(class="fa-solid fa-xl fa-right-to-bracket")
+        else            
+            ul 
+                li 
+                    em=user.name
+                li    
+                    a(href="#" class="custom-icon" hx-post="/logout") 
+                        i(class="fa-solid fa-xl fa-right-from-bracket pico-color-red-400")

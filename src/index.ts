@@ -1,14 +1,22 @@
-import express from "express";
+import "dotenv/config";
+
+import { getUserByEmail } from "@db/repositories.js";
 import {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
   generateAuthenticationOptions,
+  generateRegistrationOptions,
   verifyAuthenticationResponse,
+  verifyRegistrationResponse,
   type WebAuthnCredential,
 } from "@simplewebauthn/server";
 import { isoUint8Array } from "@simplewebauthn/server/helpers";
+import Debug from "debug";
+import express from "express";
 
+import { CURRENT_USER_EMAIL } from "./utils/env.js";
+
+const debug = Debug("fs-auth:index");
 const app = express();
+app.set("view engine", "pug");
 app.use(express.json());
 app.use(express.static("public"));
 
@@ -22,6 +30,14 @@ const db = {
   credentials: [] as WebAuthnCredential[], // Stores public keys
   currentChallenge: "",
 };
+
+app.get("/", async (req, res) => {
+  const user = await getUserByEmail(CURRENT_USER_EMAIL);
+  res.render("pages/index", {
+    title: "Home",
+    user: user || null,
+  });
+});
 
 // --- 1. REGISTRATION ENDPOINTS ---
 app.get("/api/register-options", async (req, res) => {
@@ -113,4 +129,7 @@ app.post("/api/login-verify", async (req, res) => {
   res.status(400).json({ status: "error" });
 });
 
-app.listen(3000, () => console.log("Demo running at http://localhost:3000"));
+const PORT = 5001;
+app.listen(PORT, () => {
+  debug(`Listening on port ${PORT}: http://localhost:${PORT}`);
+});
