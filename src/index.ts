@@ -61,10 +61,10 @@ app.get("/api/register-options", async (req, res) => {
       userVerification: "required",
       residentKey: "required",
     },
-    excludeCredentials: user.credentials.map((cred) => {
-      id: cred.id,
-      type: "public-key"
-    }),
+    excludeCredentials: user.credentials.map((c) => ({
+      id: c.id,
+      type: "public-key",
+    })),
   });
   await updateCurrentChallenge(user.id, options.challenge);
   res.json(options);
@@ -93,12 +93,6 @@ app.post("/api/register-verify", async (req, res) => {
 
     // Save explicit AuthenticatorDevice object
     await saveCredential(user.id, credential);
-    // db.credentials.push({
-    //   id: credential.id,
-    //   publicKey: credential.publicKey,
-    //   counter: credential.counter,
-    //   transports: credential.transports,
-    // });
 
     return res.json({ status: "ok", message: "Passkey registered!" });
   }
@@ -107,28 +101,44 @@ app.post("/api/register-verify", async (req, res) => {
 
 //  AUTHENTICATION ENDPOINTS ---
 app.get("/api/auth-options", async (req, res) => {
+  const user = await getUserByEmail(CURRENT_USER_EMAIL);
+  if (!user) {
+    return res.status(404).json({ status: "error", message: "User not found" });
+  }
+  if (user.credentials.length == 0) {
+    return res
+      .status(404)
+      .json({ status: "error", message: "No credential found" });
+  }
   const options = await generateAuthenticationOptions({
     rpID: RP_ID,
-    allowCredentials: db.credentials.map((c) => ({
+    allowCredentials: user.credentials.map((c) => ({
       id: c.id,
       type: "public-key",
     })),
   });
 
-  db.currentChallenge = options.challenge;
+  await updateCurrentChallenge(user.id, options.challenge);
   res.json(options);
 });
 
 app.post("/api/auth-verify", async (req, res) => {
+  const user = await getUserByEmail(CURRENT_USER_EMAIL);
+  if (!user) {
+    return res.status(404).json({ status: "error", message: "User not found" });
+  }
+  if (user.credentials.length == 0) {
+    return res
+      .status(404)
+      .json({ status: "error", message: "No credential found" });
+  }
   // Find matching credential by ID from request body
-  const savedCredential = db.credentials.find((c) => c.id === req.body.id);
-
+  const savedCredential = user.credentials.find((c) => c.id === req.body.id);
   if (!savedCredential) {
     return res
       .status(400)
       .json({ status: "error", message: "Credential not found" });
   }
-
   const verification = await verifyAuthenticationResponse({
     response: req.body,
     expectedChallenge: db.currentChallenge,
@@ -136,7 +146,9 @@ app.post("/api/auth-verify", async (req, res) => {
     expectedRPID: RP_ID,
     credential: {
       id: savedCredential.id,
-      publicKey: savedCredential.publicKey,
+      // NOTE: This give TypeScript error due to mismatched types (Uint8Array vs Uint8ArrayLike).
+      // publicKey: savedCredential.publicKey,
+      publicKey: new Uint8Array(savedCredential.publicKey),
       counter: savedCredential.counter,
       transports: savedCredential.transports,
     },

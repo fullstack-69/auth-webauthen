@@ -1,3 +1,4 @@
+import type { AuthenticatorTransportFuture } from "@simplewebauthn/server";
 import { relations, sql } from "drizzle-orm";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { nanoid } from "nanoid";
@@ -24,7 +25,7 @@ export const credentialsTable = sqliteTable("credentials", {
   counter: integer("counter").notNull(),
   transports: text("transport", { mode: "json" })
     .notNull()
-    .$type<string[]>()
+    .$type<AuthenticatorTransportFuture[]>()
     .default(sql`(json_array())`),
 });
 

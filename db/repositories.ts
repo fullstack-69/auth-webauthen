@@ -4,44 +4,51 @@ import { type WebAuthnCredential } from "@simplewebauthn/server";
 import { eq, like } from "drizzle-orm";
 
 export async function getUserByEmail(email: string) {
-  // Simulate a database query to retrieve user by email
+  // Relational `with` query would json_array() the blob "public_key" column,
+  // which SQLite rejects ("JSON cannot hold BLOB values"), so fetch separately.
   const user = await dbClient.query.usersTable.findFirst({
     where: eq(usersTable.email, email),
-    with: {
-      credentials: true,
-    },
   });
-  return user;
+  if (!user) return user;
+
+  const credentials = await dbClient
+    .select()
+    .from(credentialsTable)
+    .where(eq(credentialsTable.userId, user.id));
+
+  return { ...user, credentials };
 }
 
 export async function updateCurrentChallenge(
   userId: string,
   challenge: string,
 ) {
-  await dbClient
+  const res = await dbClient
     .update(usersTable)
     .set({ currentChallenge: challenge })
     .where(eq(usersTable.id, userId));
+  return res;
 }
 
 export async function saveCredential(
   userId: string,
   credential: WebAuthnCredential,
 ) {
-  await dbClient.insert(credentialsTable).values({
+  const res = await dbClient.insert(credentialsTable).values({
     id: credential.id,
     publicKey: credential.publicKey,
     transports: credential.transports,
     counter: credential.counter,
     userId,
   });
+  return res;
 }
 
-export async function getCredentials(userId: string) {
-  const res = dbClient
-    .select()
-    .from(credentialsTable)
-    .where(eq(credentialsTable.userId, userId));
+export async function updateCounter(id: string, newCounter: number) {
+  const res = await dbClient
+    .update(credentialsTable)
+    .set({ counter: newCounter })
+    .where(eq(credentialsTable.id, id));
 
-  return res || [];
+  return res;
 }
