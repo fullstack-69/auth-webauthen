@@ -1,6 +1,10 @@
 import "dotenv/config";
 
-import { getUserByEmail } from "@db/repositories.js";
+import {
+  getUserByEmail,
+  saveCredential,
+  updateCurrentChallenge,
+} from "@db/repositories.js";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -12,17 +16,19 @@ import { isoUint8Array } from "@simplewebauthn/server/helpers";
 import Debug from "debug";
 import express from "express";
 
-import { CURRENT_USER_EMAIL } from "./utils/env.js";
+import {
+  CURRENT_USER_EMAIL,
+  ORIGIN,
+  PORT,
+  RP_ID,
+  RP_NAME,
+} from "./utils/env.js";
 
 const debug = Debug("fs-auth:index");
 const app = express();
 app.set("view engine", "pug");
 app.use(express.json());
 app.use(express.static("public"));
-
-const RP_NAME = "WebAuthn Teaching Demo";
-const RP_ID = "localhost";
-const ORIGIN = "http://localhost:3000";
 
 // In-memory "Database"
 const db = {
@@ -39,51 +45,68 @@ app.get("/", async (req, res) => {
   });
 });
 
-// --- 1. REGISTRATION ENDPOINTS ---
+// REGISTRATION ENDPOINTS ---
 app.get("/api/register-options", async (req, res) => {
+  const user = await getUserByEmail(CURRENT_USER_EMAIL);
+  if (!user) {
+    return res.status(404).json({ status: "error", message: "User not found" });
+  }
   const options = await generateRegistrationOptions({
     rpName: RP_NAME,
     rpID: RP_ID,
-    userID: isoUint8Array.fromUTF8String(db.user.id),
-    userName: db.user.username,
+    userID: isoUint8Array.fromUTF8String(user.id),
+    userName: user.email,
     attestationType: "none",
     authenticatorSelection: {
       userVerification: "required",
       residentKey: "required",
     },
+    excludeCredentials: user.credentials.map((cred) => {
+      id: cred.id,
+      type: "public-key"
+    }),
   });
-
-  db.currentChallenge = options.challenge;
+  await updateCurrentChallenge(user.id, options.challenge);
   res.json(options);
 });
 
 app.post("/api/register-verify", async (req, res) => {
+  const user = await getUserByEmail(CURRENT_USER_EMAIL);
+  if (!user) {
+    return res.status(404).json({ status: "error", message: "User not found" });
+  }
+  if (!user.currentChallenge) {
+    return res
+      .status(400)
+      .json({ status: "error", message: "No challenge found for user" });
+  }
   const verification = await verifyRegistrationResponse({
     response: req.body,
-    expectedChallenge: db.currentChallenge,
+    expectedChallenge: user.currentChallenge,
     expectedOrigin: ORIGIN,
     expectedRPID: RP_ID,
-    requireUserVerification: false,
+    requireUserVerification: true,
   });
 
   if (verification.verified) {
     const { credential } = verification.registrationInfo;
 
     // Save explicit AuthenticatorDevice object
-    db.credentials.push({
-      id: credential.id,
-      publicKey: credential.publicKey,
-      counter: credential.counter,
-      transports: credential.transports,
-    });
+    await saveCredential(user.id, credential);
+    // db.credentials.push({
+    //   id: credential.id,
+    //   publicKey: credential.publicKey,
+    //   counter: credential.counter,
+    //   transports: credential.transports,
+    // });
 
     return res.json({ status: "ok", message: "Passkey registered!" });
   }
   res.status(400).json({ status: "error" });
 });
 
-// --- 2. LOGIN ENDPOINTS ---
-app.get("/api/login-options", async (req, res) => {
+//  AUTHENTICATION ENDPOINTS ---
+app.get("/api/auth-options", async (req, res) => {
   const options = await generateAuthenticationOptions({
     rpID: RP_ID,
     allowCredentials: db.credentials.map((c) => ({
@@ -96,7 +119,7 @@ app.get("/api/login-options", async (req, res) => {
   res.json(options);
 });
 
-app.post("/api/login-verify", async (req, res) => {
+app.post("/api/auth-verify", async (req, res) => {
   // Find matching credential by ID from request body
   const savedCredential = db.credentials.find((c) => c.id === req.body.id);
 
@@ -129,7 +152,6 @@ app.post("/api/login-verify", async (req, res) => {
   res.status(400).json({ status: "error" });
 });
 
-const PORT = 5001;
 app.listen(PORT, () => {
   debug(`Listening on port ${PORT}: http://localhost:${PORT}`);
 });

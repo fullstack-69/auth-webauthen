@@ -1,5 +1,5 @@
 import { dbClient, dbConn } from "@db/client.js";
-import { usersTable, accountsTable } from "@db/schema.js";
+import { usersTable } from "@db/schema.js";
 import bcrypt from "bcrypt";
 
 const saltRounds = 10;
