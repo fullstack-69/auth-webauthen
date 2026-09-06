@@ -1,8 +1,10 @@
 import "dotenv/config";
 
 import {
+  deleteCurrentChallenge,
   getUserByEmail,
   saveCredential,
+  updateCounter,
   updateCurrentChallenge,
 } from "@db/repositories.js";
 import {
@@ -10,10 +12,10 @@ import {
   generateRegistrationOptions,
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
-  type WebAuthnCredential,
 } from "@simplewebauthn/server";
 import { isoUint8Array } from "@simplewebauthn/server/helpers";
 import Debug from "debug";
+import type { ErrorRequestHandler } from "express";
 import express from "express";
 
 import {
@@ -29,13 +31,6 @@ const app = express();
 app.set("view engine", "pug");
 app.use(express.json());
 app.use(express.static("public"));
-
-// In-memory "Database"
-const db = {
-  user: { id: "user_123", username: "student@example.com" },
-  credentials: [] as WebAuthnCredential[], // Stores public keys
-  currentChallenge: "",
-};
 
 app.get("/", async (req, res) => {
   const user = await getUserByEmail(CURRENT_USER_EMAIL);
@@ -58,8 +53,8 @@ app.get("/api/register-options", async (req, res) => {
     userName: user.email,
     attestationType: "none",
     authenticatorSelection: {
-      userVerification: "required",
-      residentKey: "required",
+      residentKey: "preferred",
+      userVerification: "preferred",
     },
     excludeCredentials: user.credentials.map((c) => ({
       id: c.id,
@@ -85,8 +80,10 @@ app.post("/api/register-verify", async (req, res) => {
     expectedChallenge: user.currentChallenge,
     expectedOrigin: ORIGIN,
     expectedRPID: RP_ID,
-    requireUserVerification: true,
   });
+
+  // Destroy the challenge so it cannot be used again
+  await deleteCurrentChallenge(user.id);
 
   if (verification.verified) {
     const { credential } = verification.registrationInfo;
@@ -132,6 +129,12 @@ app.post("/api/auth-verify", async (req, res) => {
       .status(404)
       .json({ status: "error", message: "No credential found" });
   }
+  if (!user.currentChallenge) {
+    return res
+      .status(404)
+      .json({ status: "error", message: "No challenge found" });
+  }
+
   // Find matching credential by ID from request body
   const savedCredential = user.credentials.find((c) => c.id === req.body.id);
   if (!savedCredential) {
@@ -141,7 +144,7 @@ app.post("/api/auth-verify", async (req, res) => {
   }
   const verification = await verifyAuthenticationResponse({
     response: req.body,
-    expectedChallenge: db.currentChallenge,
+    expectedChallenge: user.currentChallenge,
     expectedOrigin: ORIGIN,
     expectedRPID: RP_ID,
     credential: {
@@ -155,14 +158,35 @@ app.post("/api/auth-verify", async (req, res) => {
     requireUserVerification: false,
   });
 
-  if (verification.verified) {
-    // Update the stored counter to prevent replay attacks
-    savedCredential.counter = verification.authenticationInfo.newCounter;
-    return res.json({ status: "ok", message: "Authentication successful!" });
-  }
+  // Destroy the challenge so it cannot be used again
+  await deleteCurrentChallenge(user.id);
 
-  res.status(400).json({ status: "error" });
+  if (!verification.verified) res.status(400).json({ status: "error" });
+
+  // Update the stored counter to prevent replay attacks
+  const result = await updateCounter(
+    savedCredential.id,
+    verification.authenticationInfo.newCounter,
+  );
+  if (result.rowsAffected === 0) {
+    return res
+      .status(404)
+      .json({ status: "error", message: "Counter update failed." });
+  }
+  return res.json({ status: "ok", message: "Authentication successful!" });
 });
+
+// JSON Error Middleware
+const jsonErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
+  debug(err.message);
+  const errorResponse = {
+    message: err.message || "Internal Server Error",
+    type: err.name || "Error",
+    stack: err.stack,
+  };
+  res.status(500).send(errorResponse);
+};
+app.use(jsonErrorHandler);
 
 app.listen(PORT, () => {
   debug(`Listening on port ${PORT}: http://localhost:${PORT}`);

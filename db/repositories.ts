@@ -30,6 +30,14 @@ export async function updateCurrentChallenge(
   return res;
 }
 
+export async function deleteCurrentChallenge(userId: string) {
+  const res = await dbClient
+    .update(usersTable)
+    .set({ currentChallenge: null })
+    .where(eq(usersTable.id, userId));
+  return res;
+}
+
 export async function saveCredential(
   userId: string,
   credential: WebAuthnCredential,
