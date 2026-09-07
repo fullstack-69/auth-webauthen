@@ -24,13 +24,6 @@ async function insertData() {
           password: hash,
           avatarURL: "logos/robot.png",
         },
-        {
-          name: "Nirand Pisutha-Arnond",
-          email: "nnnpooh@gmail.com",
-          isAdmin: true,
-          password: hash,
-          avatarURL: "logos/robot.png",
-        },
       ])
       .returning({ id: usersTable.id });
 
