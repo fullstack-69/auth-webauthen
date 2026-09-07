@@ -1,9 +1,13 @@
 article(style="width:100%")
     div
-        button(hx-on:click="getRegisterOptions()") Get Registration Options
-        button(hx-on:click="passRegOptionToAuthenticator()") Pass Registration Options to Authenticator
-        button(hx-on:click="sendAttestationResponse()") Send Attestation Response
-    div
-        button(hx-on:click="getAuthOptions()") Get Authentication Options
-        button(hx-on:click="passAuthOptionToAuthenticator()") Pass Authentication Options to Authenticator
-        button(hx-on:click="sendAssertionResponse()") Send Assertion Response
+        h2 Registration
+        div(class="grid")
+            button(hx-on:click="getRegisterOptions()") Get Registration Options
+            button(hx-on:click="passRegOptionToAuthenticator()") Pass Registration Options to Authenticator
+            button(hx-on:click="sendAttestationResponse()") Send Attestation Response
+    div(style="margin-top: 1rem;")
+        h2 Authentication
+        div(class="grid")
+            button(hx-on:click="getAuthOptions()") Get Authentication Options
+            button(hx-on:click="passAuthOptionToAuthenticator()") Pass Authentication Options to Authenticator
+            button(hx-on:click="sendAssertionResponse()") Send Assertion Response

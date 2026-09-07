@@ -54,7 +54,9 @@ app.get("/api/register-options", async (req, res) => {
     attestationType: "none",
     authenticatorSelection: {
       residentKey: "preferred",
-      userVerification: "preferred",
+      // This setting sets the user verification requirement (PIN, biometric, etc.) for the authenticator.
+      // userVerification: "preferred",
+      userVerification: "required",
     },
     excludeCredentials: user.credentials.map((c) => ({
       id: c.id,
@@ -80,6 +82,9 @@ app.post("/api/register-verify", async (req, res) => {
     expectedChallenge: user.currentChallenge,
     expectedOrigin: ORIGIN,
     expectedRPID: RP_ID,
+    // If you set the userVerification to "preferred" in the registration options, you must also set it to "false" here, or else some authenticators will fail to register. If you set it to "required" in the registration options, you must also set it to "true" here, or else some authenticators will fail to register.
+    // requireUserVerification: false,
+    requireUserVerification: true,
   });
 
   // Destroy the challenge so it cannot be used again
